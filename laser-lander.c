@@ -5,6 +5,37 @@
 
 #include "libol.h"
 
+struct object;
+
+typedef void (*move_function)(struct object *o, float time);
+typedef void (*draw_function)(struct object *o);
+
+#define MAXOBJS 1000
+
+static struct object {
+	float x, y, angle;
+	float vx, vy;
+	move_function move;
+	draw_function draw;
+} o[MAXOBJS];
+static int nobjs = 0;
+
+static void draw_objs(void)
+{
+	int i;
+
+	for (i = 0; i < nobjs; i++)
+		o[i].draw(&o[i]);
+}
+
+static void move_objs(float elapsed_time)
+{
+	int i;
+
+	for (i = 0; i < nobjs; i++)
+		o[i].move(&o[i], elapsed_time);
+}
+
 static int setup_openlase(void)
 {
 	OLRenderParams params;
@@ -37,11 +68,9 @@ static int setup_openlase(void)
 	return 0;
 }
 
-static void openlase_renderframe(void)
+static void openlase_renderframe(float *elapsed_time)
 {
-	float ftime;
-
-	ftime = olRenderFrame(60);
+	*elapsed_time = olRenderFrame(60);
 	olLoadIdentity();
 	olTranslate(-1,1);
 	olScale(2,-2);
@@ -50,13 +79,16 @@ static void openlase_renderframe(void)
 
 int main(int argc, char *argv[])
 {
+	float elapsed_time = 0.0;
+
 	if (setup_openlase())
 		return -1;
 
+
 	while(1) {
-		olLine(0.0, 0.0, 1.0, 1.0, C_WHITE);
-		openlase_renderframe();
-		usleep(1000);
+		draw_objs();
+		openlase_renderframe(&elapsed_time);
+		move_objs(elapsed_time);
 	}
 	olShutdown();
 	return 0;
