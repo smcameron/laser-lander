@@ -450,20 +450,32 @@ static void setup_vects(void)
 static void move_camera(void)
 {
 	int dcx, dcy; /* desired camera position */
+	float px, py;
+	float maxspeed = 300;
 
 	dcx = camerax;
 	dcy = cameray;
 
+	px = fabs(lander->vx) / maxspeed;
+	if (px > 1.0)
+		px = 1.0;
+	py = fabs(lander->vy) / maxspeed;
+	if (py > 1.0)
+		py = 1.0;
+
+	px = 1.0 - px;
+	py = 1.0 - py;
+
 	if (lander->vx > 0)
-		dcx = lander->x - 300;
+		dcx = lander->x - (1 - px) * 300 - (px * (float) SCREEN_WIDTH / 2.0);
 	if (lander->vx < 0)
-		dcx = lander->x - 700;
+		dcx = lander->x - (1 - px) * 700 - (px * (float) SCREEN_WIDTH / 2.0);
 	if (lander->vy > 0)
-		dcy = lander->y - 300;
+		dcy = lander->y - (1 - py) * 300 - (py * (float) SCREEN_HEIGHT / 2.0);
 	if (lander->vy < 0)
-		dcy = lander->y - 700;
-	camerax += (int) (0.05 * (dcx - camerax));
-	cameray += (int) (0.05 * (dcy - cameray));
+		dcy = lander->y - (1 - py) * 700 - (py * (float) SCREEN_HEIGHT / 2.0);
+	camerax += (int) (0.3 * (dcx - camerax));
+	cameray += (int) (0.3 * (dcy - cameray));
 }
 
 int main(int argc, char *argv[])
