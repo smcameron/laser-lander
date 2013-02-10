@@ -22,6 +22,7 @@ typedef void (*move_function)(struct object *o, float time);
 typedef void (*draw_function)(struct object *o);
 
 #define MAXOBJS 1000
+#define NBITBLOCKS ((MAXOBJS >> 5) + 1)  /* 5, 2^5 = 32, 32 bits per int. */
 
 static struct object {
 	float x, y, angle;
@@ -30,7 +31,59 @@ static struct object {
 	draw_function draw;
 } o[MAXOBJS];
 static int nobjs = 0;
+static unsigned int free_obj_bitmap[NBITBLOCKS] = { 0 };
+static highest_object_number = -1;
 
+int find_free_obj()
+{
+	int i, j, answer;
+	unsigned int block;
+
+	/* this might be optimized by find_first_zero_bit, or whatever */
+	/* it's called that's in the linux kernel.  But, it's pretty */
+	/* fast as is, and this is portable without writing asm code. */
+	/* Er, portable, except for assuming an int is 32 bits. */
+
+	for (i = 0; i < NBITBLOCKS; i++) {
+		if (free_obj_bitmap[i] == 0xffffffff) /* is this block full?  continue. */
+			continue;
+
+		/* I tried doing a preliminary binary search using bitmasks to figure */
+		/* which byte in block contains a free slot so that the for loop only */
+		/* compared 8 bits, rather than up to 32.  This resulted in a performance */
+		/* drop, (according to the gprof) perhaps contrary to intuition.  My guess */
+		/* is branch misprediction hurt performance in that case.  Just a guess though. */
+
+		/* undoubtedly the best way to find the first empty bit in an array of ints */
+		/* is some custom ASM code.  But, this is portable, and seems fast enough. */
+		/* profile says we spend about 3.8% of time in here. */
+
+		/* Not full. There is an empty slot in this block, find it. */
+		block = free_obj_bitmap[i];
+		for (j=0;j<32;j++) {
+			if (block & 0x01) {	/* is bit j set? */
+				block = block >> 1;
+				continue;	/* try the next bit. */
+			}
+
+			/* Found free bit, bit j.  Set it, marking it non free.  */
+			free_obj_bitmap[i] |= (1 << j);
+			answer = (i * 32 + j);	/* return the corresponding array index, if in bounds. */
+			if (answer < MAXOBJS) {
+				if (answer > highest_object_number)
+					highest_object_number = answer;
+				return answer;
+			}
+			return -1;
+		}
+	}
+	return -1;
+}
+
+static inline void free_object(int i)
+{
+        free_obj_bitmap[i >> 5] &= ~(1 << (i % 32)); /* clear the proper bit. */
+}
 
 /* Draws a letter in the given font at an absolute x,y coords on the screen. */
 static int abs_xy_draw_letter(struct my_vect_obj **font, 
