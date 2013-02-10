@@ -80,11 +80,16 @@ void draw_generic(struct object *o)
 
 	x1 = o->x + o->v->p[0].x - camerax;
 	y1 = o->y + o->v->p[0].y - cameray;  
+
+	olBegin(OL_LINESTRIP);
+	olVertex(x1,y1,C_WHITE);
+
 	for (j = 0; j < o->v->npoints - 1; j++) {
 		if (o->v->p[j+1].x == LINE_BREAK) { /* Break in the line segments. */
 			j += 2;
 			x1 = o->x + o->v->p[j].x - camerax;
 			y1 = o->y + o->v->p[j].y - cameray;  
+			olVertex(x1,y1,C_BLACK);
 		}
 		if (o->v->p[j].x == COLOR_CHANGE) {
 			/* do something here to change colors */
@@ -95,10 +100,11 @@ void draw_generic(struct object *o)
 		x2 = o->x + o->v->p[j+1].x - camerax; 
 		y2 = o->y + o->v->p[j+1].y - cameray;
 		if (x1 > 0 && x2 > 0)
-			olLine(x1, y1, x2, y2, C_WHITE); 
+			olVertex(x2,y2,C_WHITE);
 		x1 = x2;
 		y1 = y2;
 	}
+	olEnd();
 }
 
 void draw_lander(struct object *o)
@@ -148,10 +154,17 @@ static void draw_terrain(void)
 	int yintersect;
 	int dx, dy;
 
+	int first = 1;
 	for (i = 0; i < NTERRAINPTS - 1; i++) {
-		olLine(terrain[i].x - camerax, terrain[i].y - cameray,
-				terrain[i + 1].x - camerax,
-				 terrain[i + 1].y - cameray, C_WHITE);
+		if ( first ) {
+			olBegin(OL_LINESTRIP);
+			olVertex(terrain[i].x - camerax,
+				 terrain[i].y - cameray,C_WHITE);
+			first = 0;
+		}
+		olVertex( terrain[i + 1].x - camerax,
+			 terrain[i + 1].y - cameray, C_WHITE);
+
 		if (terrain[i].x < lander->x &&
 			terrain[i + 1].x > lander->x) {
 			dx = terrain[i + 1].x - terrain[i].x;
@@ -166,6 +179,7 @@ static void draw_terrain(void)
 			}
 		}
 	}
+	olEnd();
 }
 
 static void generate_terrain(int first, int last)
@@ -265,9 +279,12 @@ static int abs_xy_draw_letter(struct my_vect_obj **font,
 	if (letter == ' ' || letter == '\n' || letter == '\t' || font[letter] == NULL)
 		return abs(font['Z']->p[0].x - font['Z']->p[1].x);
 
+	int first = 1;
 	for (i = 0; i < font[letter]->npoints-1; i++) {
-		if (font[letter]->p[i+1].x == LINE_BREAK)
+		if (font[letter]->p[i+1].x == LINE_BREAK) {
 			i += 2;
+			olVertex(x + font[letter]->p[i].x,y + font[letter]->p[i ].y,C_BLACK);
+		}
 		x1 = x + font[letter]->p[i].x;
 		y1 = y + font[letter]->p[i].y;
 		x2 = x + font[letter]->p[i + 1].x;
@@ -287,9 +304,16 @@ static int abs_xy_draw_letter(struct my_vect_obj **font,
 		if (x2 > maxx)
 			maxx = x2;
 		
-		if (x1 > 0 && x2 > 0)
-			olLine(x1, y1, x2, y2, C_WHITE); 
+		if (x1 > 0 && x2 > 0) {
+			if ( first ) {
+				olBegin(OL_LINESTRIP);
+				olVertex(x1,y1,C_WHITE);
+				first = 0;
+			}
+			olVertex(x2, y2, C_WHITE); 
+		}
 	}
+	olEnd();
 	diff = abs(maxx - minx);
 	/* if (diff == 0)
 		return (abs(font['Z']->p[0].x - font['Z']->p[1].x) / 4); */
@@ -334,7 +358,7 @@ static void move_lander(struct object *o, float elapsed_time)
 		crash_timer--;
 		if (crash_timer == 0) {
 			crash_screen = 0;
-			o->x = 500.1;
+			o->x = SCREEN_WIDTH/2+0.1;
 			o->y = 0;
 			o->vx = 150;
 			o->vy = 0;
@@ -518,7 +542,7 @@ int main(int argc, char *argv[])
 	srand(tv.tv_usec);
 
 	free_obj_bitmap[0] = 0x01;
-	lander->x = 500.1;
+	lander->x = SCREEN_WIDTH/2+0.1;
 	lander->y = 0;
 	lander->vx = 150;
 	lander->vy = 0;
