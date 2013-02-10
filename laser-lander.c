@@ -15,6 +15,10 @@
 #define XSCALE (1.0 / (SCREEN_WIDTH / 2.0))
 #define YSCALE (-1.0 / (SCREEN_HEIGHT / 2.0))
 static float gravity = 0.3;
+static float requested_thrust = 0.0;
+static float requested_left = 0.0;
+static float requested_right = 0.0;
+static float fuel = 1000.0;
 
 #define JOYSTICK_DEVICE "/dev/input/js0"
 static int joystick_fd = -1;
@@ -92,6 +96,31 @@ void draw_generic(struct object *o)
 			olLine(x1, y1, x2, y2, C_WHITE); 
 		x1 = x2;
 		y1 = y2;
+	}
+}
+
+void draw_lander(struct object *o)
+{
+	draw_generic(o);
+
+	/* draw flames */
+	if (requested_thrust > 0.0 && fuel > 0.0) {
+		olLine(o->x - 5 - camerax, o->y + 20 - cameray, 
+			o->x - camerax, o->y + 65 - cameray, C_WHITE);
+		olLine(o->x + 5 - camerax, o->y + 20 - cameray, 
+			o->x - camerax, o->y + 65 - cameray, C_WHITE);
+	}
+	if (requested_right > 0.0 && fuel > 0.0) {
+		olLine(o->x - 15 - camerax, o->y - cameray - 5, 
+			o->x - 40 - camerax, o->y- cameray, C_WHITE);
+		olLine(o->x - 15 - camerax, o->y - cameray + 5, 
+			o->x - 40 - camerax, o->y- cameray, C_WHITE);
+	}
+	if (requested_left > 0.0 && fuel > 0.0) {
+		olLine(o->x + 15 - camerax, o->y - cameray - 5, 
+			o->x + 40 - camerax, o->y- cameray, C_WHITE);
+		olLine(o->x + 15 - camerax, o->y - cameray + 5, 
+			o->x + 40 - camerax, o->y- cameray, C_WHITE);
 	}
 }
 
@@ -290,6 +319,17 @@ static void move_generic(struct object *o, float elapsed_time)
 	o->vy += gravity;
 }
 
+static void move_lander(struct object *o, float elapsed_time)
+{
+	move_generic(o, elapsed_time);
+	if (requested_thrust > 0.0 && fuel > 0.0)
+		o->vy -= gravity * 5.0;
+	if (requested_left > 0.0 && fuel > 0.0)
+		o->vx -= gravity * 3.0;
+	if (requested_right > 0.0 && fuel > 0.0)
+		o->vx += gravity * 3.0;
+}
+
 static void move_objs(float elapsed_time)
 {
 	int i;
@@ -388,6 +428,18 @@ static void deal_with_joystick(void)
 			attract_mode_active = 0;
 		}
 	}
+	if (jse.button[3] == 1)
+		requested_thrust = 1.0;
+	else
+		requested_thrust = 0.0;
+	if (jse.button[2] == 1)
+		requested_left = 1.0;
+	else
+		requested_left = 0.0;
+	if (jse.button[1] == 1)
+		requested_right = 1.0;
+	else
+		requested_right = 0.0;
 }
 
 static void setup_vects(void)
@@ -428,8 +480,8 @@ int main(int argc, char *argv[])
 	lander->vx = 150;
 	lander->vy = 0;
 	lander->v = &lander_vect;
-	lander->draw = draw_generic;
-	lander->move = move_generic;
+	lander->draw = draw_lander;
+	lander->move = move_lander;
 
 	setup_vects();
 	init_terrain();
