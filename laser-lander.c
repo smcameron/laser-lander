@@ -19,6 +19,8 @@ static float requested_thrust = 0.0;
 static float requested_left = 0.0;
 static float requested_right = 0.0;
 static float fuel = 1000.0;
+static int crash_screen = 0;
+static int successful_landing = 0;
 
 #define JOYSTICK_DEVICE "/dev/input/js0"
 static int joystick_fd = -1;
@@ -126,14 +128,17 @@ void draw_lander(struct object *o)
 
 static void collision(void)
 {
-	if (lander->vy < 0.5)
+	if (crash_screen)
+		return;
+
+	if (lander->vy < 15.0 && fabs(lander->vx) < 10.0) {
 		printf("landing!\n");
-	else
+		successful_landing = 1;
+	} else {
 		printf("crash!");
-	lander->x = 500.1;
-	lander->y = 0;
-	lander->vx = 150;
-	lander->vy = 0;
+		successful_landing = 0;
+	}
+	crash_screen = 1;
 }
 
 static void draw_terrain(void)
@@ -152,11 +157,11 @@ static void draw_terrain(void)
 			dx = terrain[i + 1].x - terrain[i].x;
 			dy = terrain[i + 1].y - terrain[i].y;
 			if (dy == 0) {
-				if (lander->y > terrain[i].y)
+				if (lander->y + 30 > terrain[i].y)
 					collision();
 			} else {
 					yintersect = (int) ((float) (lander->x - terrain[i].x) * ((float) dy / (float) dx) + terrain[i].y);
-					if (lander->y > yintersect)
+					if (lander->y + 30 > yintersect)
 						collision();
 			}
 		}
@@ -321,6 +326,22 @@ static void move_generic(struct object *o, float elapsed_time)
 
 static void move_lander(struct object *o, float elapsed_time)
 {
+	static int crash_timer = 0;
+
+	if (crash_screen) {
+		o->vx = 0;
+		o->vy = 0;
+		crash_timer--;
+		if (crash_timer == 0) {
+			crash_screen = 0;
+			o->x = 500.1;
+			o->y = 0;
+			o->vx = 150;
+			o->vy = 0;
+		}
+	} else {
+		crash_timer = 100;
+	}
 	move_generic(o, elapsed_time);
 	if (requested_thrust > 0.0 && fuel > 0.0)
 		o->vy -= gravity * 5.0;
@@ -478,6 +499,16 @@ static void move_camera(void)
 	cameray += (int) (0.3 * (dcy - cameray));
 }
 
+static void draw_crash_screen(void)
+{
+	if (crash_screen) {
+		if (successful_landing)
+			abs_xy_draw_string("SUCCESS!", BIG_FONT, 120, 200);
+		else
+			abs_xy_draw_string("CRASH!", BIG_FONT, 120, 200);
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	float elapsed_time = 0.0;
@@ -509,6 +540,7 @@ int main(int argc, char *argv[])
 	while(1) {
 		move_camera();
 		deal_with_joystick();
+		draw_crash_screen();
 		draw_objs();
 		attract_mode();
 		draw_terrain();
