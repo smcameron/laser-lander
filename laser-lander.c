@@ -13,7 +13,7 @@
 #define SCREEN_HEIGHT (1000.0)
 #define XSCALE (1.0 / (SCREEN_WIDTH / 2.0))
 #define YSCALE (-1.0 / (SCREEN_HEIGHT / 2.0))
-static float gravity = 0.1;
+static float gravity = 0.3;
 
 #define JOYSTICK_DEVICE "/dev/input/js0"
 static int joystick_fd = -1;
@@ -91,6 +91,17 @@ void draw_generic(struct object *o)
 			olLine(x1, y1, x2, y2, C_WHITE); 
 		x1 = x2;
 		y1 = y2;
+	}
+}
+
+static void draw_terrain(void)
+{
+	int i;
+
+	for (i = 0; i < NTERRAINPTS - 1; i++) {
+		olLine(terrain[i].x - camerax, terrain[i].y - cameray,
+				terrain[i + 1].x - camerax,
+				 terrain[i + 1].y - cameray, C_WHITE);
 	}
 }
 
@@ -405,6 +416,7 @@ int main(int argc, char *argv[])
 		deal_with_joystick();
 		draw_objs();
 		attract_mode();
+		draw_terrain();
 		openlase_renderframe(&elapsed_time);
 		move_objs(elapsed_time);
 	}
