@@ -103,10 +103,8 @@ static void collision(void)
 		printf("crash!");
 	lander->x = 500.1;
 	lander->y = 0;
-	lander->vx = 0;
+	lander->vx = 150;
 	lander->vy = 0;
-	camerax = 0;
-	cameray = 0;
 }
 
 static void draw_terrain(void)
@@ -427,7 +425,7 @@ int main(int argc, char *argv[])
 	free_obj_bitmap[0] = 0x01;
 	lander->x = 500.1;
 	lander->y = 0;
-	lander->vx = 0;
+	lander->vx = 150;
 	lander->vy = 0;
 	lander->v = &lander_vect;
 	lander->draw = draw_generic;
