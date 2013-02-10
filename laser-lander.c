@@ -139,6 +139,29 @@ static void openlase_renderframe(float *elapsed_time)
 	/* window is now 0,0 - 1,1 with y increasing down, x increasing right */
 }
 
+static void draw_title_screen(void)
+{
+	static int y = 400;
+	static int vy = 5;
+
+	abs_xy_draw_string("LASER LANDER", BIG_FONT, 120, y);
+	y += vy;
+	if (y > 600)
+		vy = -5;
+	if (y < 300)
+		vy = 5;
+	abs_xy_draw_string("(c) Stephen M. Cameron 2013", SMALL_FONT, 250, 700); 
+}
+
+static int attract_mode_active = 1;
+
+static void attract_mode(void)
+{
+	if (!attract_mode_active)
+		return;
+	draw_title_screen();
+}
+
 int main(int argc, char *argv[])
 {
 	float elapsed_time = 0.0;
@@ -150,7 +173,7 @@ int main(int argc, char *argv[])
 
 	while(1) {
 		draw_objs();
-		abs_xy_draw_string("LASER LANDER", BIG_FONT, 120, 500);
+		attract_mode();
 		openlase_renderframe(&elapsed_time);
 		move_objs(elapsed_time);
 	}
