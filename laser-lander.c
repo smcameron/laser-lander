@@ -95,14 +95,44 @@ void draw_generic(struct object *o)
 	}
 }
 
+static void collision(void)
+{
+	if (lander->vy < 0.5)
+		printf("landing!\n");
+	else
+		printf("crash!");
+	lander->x = 500.1;
+	lander->y = 0;
+	lander->vx = 0;
+	lander->vy = 0;
+	camerax = 0;
+	cameray = 0;
+}
+
 static void draw_terrain(void)
 {
 	int i;
+	double dist;
+	int yintersect;
+	int dx, dy;
 
 	for (i = 0; i < NTERRAINPTS - 1; i++) {
 		olLine(terrain[i].x - camerax, terrain[i].y - cameray,
 				terrain[i + 1].x - camerax,
 				 terrain[i + 1].y - cameray, C_WHITE);
+		if (terrain[i].x < lander->x &&
+			terrain[i + 1].x > lander->x) {
+			dx = terrain[i + 1].x - terrain[i].x;
+			dy = terrain[i + 1].y - terrain[i].y;
+			if (dy == 0) {
+				if (lander->y > terrain[i].y)
+					collision();
+			} else {
+					yintersect = (int) ((float) (lander->x - terrain[i].x) * ((float) dy / (float) dx) + terrain[i].y);
+					if (lander->y > yintersect)
+						collision();
+			}
+		}
 	}
 }
 
@@ -395,7 +425,7 @@ int main(int argc, char *argv[])
 	srand(tv.tv_usec);
 
 	free_obj_bitmap[0] = 0x01;
-	lander->x = 500;
+	lander->x = 500.1;
 	lander->y = 0;
 	lander->vx = 0;
 	lander->vy = 0;
