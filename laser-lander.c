@@ -5,12 +5,16 @@
 
 #include "snis_font.h"
 #include "snis_typeface.h"
+#include "joystick.h"
 #include "libol.h"
 
 #define XDIM (1000.0)
 #define YDIM (1000.0)
 #define XSCALE (1.0 / (XDIM / 2.0))
 #define YSCALE (-1.0 / (YDIM / 2.0))
+
+#define JOYSTICK_DEVICE "/dev/input/js0"
+static int joystick_fd = -1;
 
 struct object;
 
@@ -162,9 +166,41 @@ static void attract_mode(void)
 	draw_title_screen();
 }
 
+static void deal_with_joystick(void)
+{
+	static struct wwvi_js_event jse;
+	int *xaxis, *yaxis, rc, i;
+
+	if (joystick_fd < 0)
+		return;
+
+	xaxis = &jse.stick_x;
+        yaxis = &jse.stick_y;
+
+	memset(&jse.button[0], 0, sizeof(jse.button[0]*10));
+	rc = get_joystick_status(&jse);
+	if (rc != 0)
+		return;
+
+#define JOYSTICK_SENSITIVITY 5000
+#define XJOYSTICK_THRESHOLD 20000
+
+	/* check joystick buttons */
+
+	for (i = 0; i < 11; i++) {
+		if (jse.button[i] == 1) {
+			attract_mode_active = 0;
+		}
+	}
+}
+
 int main(int argc, char *argv[])
 {
 	float elapsed_time = 0.0;
+
+	joystick_fd = open_joystick(JOYSTICK_DEVICE, NULL);
+	if (joystick_fd < 0)
+		printf("No joystick...");
 
 	snis_typefaces_init();
 
@@ -172,12 +208,15 @@ int main(int argc, char *argv[])
 		return -1;
 
 	while(1) {
+		deal_with_joystick();
 		draw_objs();
 		attract_mode();
 		openlase_renderframe(&elapsed_time);
 		move_objs(elapsed_time);
 	}
 	olShutdown();
+	if (joystick_fd >= 0)
+		close_joystick();
 	return 0;
 }
 
