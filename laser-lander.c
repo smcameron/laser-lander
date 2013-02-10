@@ -3,6 +3,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <sys/time.h>
 
 #include "snis_font.h"
 #include "snis_typeface.h"
@@ -60,7 +61,7 @@ static unsigned int free_obj_bitmap[NBITBLOCKS] = { 0 };
 static highest_object_number = 0;
 static struct object *lander = &o[0];
 
-#define NTERRAINPTS 1000
+#define NTERRAINPTS 100
 struct my_point_t terrain[NTERRAINPTS] = { 0 };
 
 void draw_generic(struct object *o)
@@ -256,11 +257,9 @@ static void draw_objs(void)
 
 static void move_generic(struct object *o, float elapsed_time)
 {
-#if 1
 	o->x += o->vx * elapsed_time;
 	o->y += o->vy * elapsed_time;
 	o->vy += gravity;
-#endif
 }
 
 static void move_objs(float elapsed_time)
@@ -390,10 +389,14 @@ static void move_camera(void)
 int main(int argc, char *argv[])
 {
 	float elapsed_time = 0.0;
+	struct timeval tv;
+
+	gettimeofday(&tv, NULL);
+	srand(tv.tv_usec);
 
 	free_obj_bitmap[0] = 0x01;
 	lander->x = 500;
-	lander->y = 500;
+	lander->y = 0;
 	lander->vx = 0;
 	lander->vy = 0;
 	lander->v = &lander_vect;
