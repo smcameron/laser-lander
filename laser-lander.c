@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
@@ -8,13 +9,16 @@
 #include "joystick.h"
 #include "libol.h"
 
-#define XDIM (1000.0)
-#define YDIM (1000.0)
-#define XSCALE (1.0 / (XDIM / 2.0))
-#define YSCALE (-1.0 / (YDIM / 2.0))
+#define SCREEN_WIDTH (1000.0)
+#define SCREEN_HEIGHT (1000.0)
+#define XSCALE (1.0 / (SCREEN_WIDTH / 2.0))
+#define YSCALE (-1.0 / (SCREEN_HEIGHT / 2.0))
+static float gravity = 0.1;
 
 #define JOYSTICK_DEVICE "/dev/input/js0"
 static int joystick_fd = -1;
+static int camerax = 0;
+static int cameray = 0;
 
 struct object;
 
@@ -24,15 +28,107 @@ typedef void (*draw_function)(struct object *o);
 #define MAXOBJS 1000
 #define NBITBLOCKS ((MAXOBJS >> 5) + 1)  /* 5, 2^5 = 32, 32 bits per int. */
 
+struct my_point_t lander_points[] = {
+	{ 0, -20 },
+	{ 10, -15 },
+	{ 10, 10 },
+	{ 0, 16},
+	{ 6, 20},
+	{ -6, 20 },
+	{ 0, 16},
+	{ -10, 10},
+	{ -10, -15 },
+	{0, -20},
+	{ LINE_BREAK, LINE_BREAK },
+	{ -5, 10},
+	{ -15, 25 },
+	{ LINE_BREAK, LINE_BREAK },
+	{ 5, 10},
+	{ 15, 25 },
+};
+struct my_vect_obj lander_vect;
+
 static struct object {
 	float x, y, angle;
 	float vx, vy;
+	struct my_vect_obj *v;
 	move_function move;
 	draw_function draw;
 } o[MAXOBJS];
-static int nobjs = 0;
+static int nobjs = 1;
 static unsigned int free_obj_bitmap[NBITBLOCKS] = { 0 };
-static highest_object_number = -1;
+static highest_object_number = 0;
+static struct object *lander = &o[0];
+
+#define NTERRAINPTS 1000
+struct my_point_t terrain[NTERRAINPTS] = { 0 };
+
+void draw_generic(struct object *o)
+{
+	int j;
+	int x1, y1, x2, y2;
+
+	if (o->v->p == NULL)
+		return;
+
+	x1 = o->x + o->v->p[0].x - camerax;
+	y1 = o->y + o->v->p[0].y - cameray;  
+	for (j = 0; j < o->v->npoints - 1; j++) {
+		if (o->v->p[j+1].x == LINE_BREAK) { /* Break in the line segments. */
+			j += 2;
+			x1 = o->x + o->v->p[j].x - camerax;
+			y1 = o->y + o->v->p[j].y - cameray;  
+		}
+		if (o->v->p[j].x == COLOR_CHANGE) {
+			/* do something here to change colors */
+			j += 1;
+			x1 = o->x + o->v->p[j].x - camerax;
+			y1 = o->y + o->v->p[j].y - cameray;  
+		}
+		x2 = o->x + o->v->p[j+1].x - camerax; 
+		y2 = o->y + o->v->p[j+1].y - cameray;
+		if (x1 > 0 && x2 > 0)
+			olLine(x1, y1, x2, y2, C_WHITE); 
+		x1 = x2;
+		y1 = y2;
+	}
+}
+
+static void generate_terrain(int first, int last)
+{
+	int midpoint;
+	short midx, midy;
+	short dx, dy;
+	int dist;
+	
+
+	if (last - first <= 1)
+		return;
+
+	midpoint = (last - first) / 2 + first;
+	dx = terrain[last].x - terrain[first].x;
+	dy = terrain[last].y - terrain[first].y;
+	midx = terrain[first].x + dx / 2;
+	midy = terrain[first].y + dy / 2;
+	dist = (int) sqrt(dx * dx + dy * dy);
+	midy += (short) (((double) rand() / (double) RAND_MAX) * dist * 0.2);
+	terrain[midpoint].x = midx;
+	terrain[midpoint].y = midy;
+	generate_terrain(first, midpoint);
+	generate_terrain(midpoint, last);
+}
+
+static init_terrain(void)
+{
+	int first = 0;
+	int last = NTERRAINPTS - 1;
+
+	terrain[first].x = 0;
+	terrain[first].y = 0;
+	terrain[last].x = (short) (16 * SCREEN_WIDTH);
+	terrain[last].y = 0;
+	generate_terrain(first, last);
+}
 
 int find_free_obj()
 {
@@ -147,6 +243,15 @@ static void draw_objs(void)
 		o[i].draw(&o[i]);
 }
 
+static void move_generic(struct object *o, float elapsed_time)
+{
+#if 1
+	o->x += o->vx * elapsed_time;
+	o->y += o->vy * elapsed_time;
+	o->vy += gravity;
+#endif
+}
+
 static void move_objs(float elapsed_time)
 {
 	int i;
@@ -247,10 +352,45 @@ static void deal_with_joystick(void)
 	}
 }
 
+static void setup_vects(void)
+{
+	setup_vect(lander_vect, lander_points);
+}
+
+static void move_camera(void)
+{
+	int dcx, dcy; /* desired camera position */
+
+	dcx = camerax;
+	dcy = cameray;
+
+	if (lander->vx > 0)
+		dcx = lander->x - 300;
+	if (lander->vx < 0)
+		dcx = lander->x - 700;
+	if (lander->vy > 0)
+		dcy = lander->y - 300;
+	if (lander->vy < 0)
+		dcy = lander->y - 700;
+	camerax += (int) (0.05 * (dcx - camerax));
+	cameray += (int) (0.05 * (dcy - cameray));
+}
+
 int main(int argc, char *argv[])
 {
 	float elapsed_time = 0.0;
 
+	free_obj_bitmap[0] = 0x01;
+	lander->x = 500;
+	lander->y = 500;
+	lander->vx = 0;
+	lander->vy = 0;
+	lander->v = &lander_vect;
+	lander->draw = draw_generic;
+	lander->move = move_generic;
+
+	setup_vects();
+	init_terrain();
 	joystick_fd = open_joystick(JOYSTICK_DEVICE, NULL);
 	if (joystick_fd < 0)
 		printf("No joystick...");
@@ -261,6 +401,7 @@ int main(int argc, char *argv[])
 		return -1;
 
 	while(1) {
+		move_camera();
 		deal_with_joystick();
 		draw_objs();
 		attract_mode();
