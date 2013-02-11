@@ -180,16 +180,27 @@ static void exhaust(float x, float y, float vx, float vy,
 	}
 }
 
+static void explode(float x, float y, int amount, int life)
+{
+	int i;
+	float tvx, tvy;
+
+	for (i = 0; i < amount; i++) {
+		tvx = ((float) rand() / (float) RAND_MAX) * 1000 - 500;
+		tvy = ((float) rand() / (float) RAND_MAX) * 1000 - 500;
+		add_spark(x, y, tvx, tvy, life); 
+	}
+}
+
 static void collision(void)
 {
 	if (crash_screen)
 		return;
 
 	if (lander->vy < 15.0 && fabs(lander->vx) < 10.0) {
-		printf("landing!\n");
 		successful_landing = 1;
 	} else {
-		printf("crash!");
+		explode(lander->x, lander->y, 100, 100);
 		successful_landing = 0;
 	}
 	crash_screen = 1;
