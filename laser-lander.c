@@ -59,6 +59,7 @@ static struct object {
 	float x, y, angle;
 	float vx, vy;
 	struct my_vect_obj *v;
+	int alive, n;
 	move_function move;
 	draw_function draw;
 } o[MAXOBJS];
@@ -129,6 +130,53 @@ void draw_lander(struct object *o)
 			o->x + 40 - camerax, o->y- cameray, C_WHITE);
 		olLine(o->x + 15 - camerax, o->y - cameray + 5, 
 			o->x + 40 - camerax, o->y- cameray, C_WHITE);
+	}
+}
+
+static void draw_spark(struct object *o)
+{
+	olDot(o->x - camerax, o->y - cameray, 2, C_WHITE);
+}
+
+static inline void free_object(int i);
+static void move_generic(struct object *o, float elapsed_time);
+static void move_spark(struct object *o, float elapsed_time)
+{
+	move_generic(o, elapsed_time);
+	o->alive--;
+	if (!o->alive)
+		free_object(o->n);
+}
+
+static int add_spark(float x, float y, float vx, float vy, int life)
+{
+	int i = find_free_obj();
+	struct object *s;
+
+	if (i < 0)
+		return;
+	s = &o[i];
+	s->n = i;
+	s->x = x;
+	s->y = y;
+	s->vx = vx;
+	s->vy = vy;
+	s->draw = draw_spark;
+	s->move = move_spark;
+	s->v = NULL;
+	s->alive = life;
+}
+
+static void exhaust(float x, float y, float vx, float vy,
+			int amount, int life)
+{
+	int i;
+	float tvx, tvy;
+
+	for (i = 0; i < amount; i++) {
+		tvx = vx + ((float) rand() / (float) RAND_MAX) * 100 - 50;
+		tvy = vy + ((float) rand() / (float) RAND_MAX) * 100 - 50;
+		add_spark(x, y, tvx, tvy, life); 
 	}
 }
 
@@ -337,8 +385,9 @@ static void draw_objs(void)
 {
 	int i;
 
-	for (i = 0; i < nobjs; i++)
-		o[i].draw(&o[i]);
+	for (i = 0; i < MAXOBJS; i++)
+		if (o[i].alive)
+			o[i].draw(&o[i]);
 }
 
 static void move_generic(struct object *o, float elapsed_time)
@@ -367,20 +416,35 @@ static void move_lander(struct object *o, float elapsed_time)
 		crash_timer = 100;
 	}
 	move_generic(o, elapsed_time);
-	if (requested_thrust > 0.0 && fuel > 0.0)
+	if (requested_thrust > 0.0 && fuel > 0.0) {
 		o->vy -= gravity * 5.0;
-	if (requested_left > 0.0 && fuel > 0.0)
+		exhaust(o->x - o->vx * elapsed_time, o->y - o->vy * elapsed_time + 65,
+			o->vx, o->vy + 400, 2, 10);
+	}
+	if (requested_left > 0.0 && fuel > 0.0) {
 		o->vx -= gravity * 3.0;
-	if (requested_right > 0.0 && fuel > 0.0)
+		exhaust(o->x + 40 - o->vx * elapsed_time, o->y - o->vy * elapsed_time,
+			o->vx + 200, o->vy, 2, 10);
+	}
+	if (requested_right > 0.0 && fuel > 0.0) {
 		o->vx += gravity * 3.0;
+		exhaust(o->x - 40 - o->vx * elapsed_time, o->y - o->vy * elapsed_time,
+			o->vx - 200, o->vy, 2, 10);
+	}
 }
 
 static void move_objs(float elapsed_time)
 {
 	int i;
+	int temp_highest_obj = -1;
 
-	for (i = 0; i < nobjs; i++)
-		o[i].move(&o[i], elapsed_time);
+	for (i = 0; i < MAXOBJS; i++)
+		if (o[i].alive) {
+			if (i > temp_highest_obj)
+				temp_highest_obj = i;
+			o[i].move(&o[i], elapsed_time);
+		}
+	highest_object_number = temp_highest_obj;
 }
 
 static int setup_openlase(void)
@@ -538,6 +602,7 @@ int main(int argc, char *argv[])
 	float elapsed_time = 0.0;
 	struct timeval tv;
 
+	memset(o, 0, sizeof(o));
 	gettimeofday(&tv, NULL);
 	srand(tv.tv_usec);
 
@@ -546,9 +611,11 @@ int main(int argc, char *argv[])
 	lander->y = 0;
 	lander->vx = 150;
 	lander->vy = 0;
+	lander->alive = 1;
 	lander->v = &lander_vect;
 	lander->draw = draw_lander;
 	lander->move = move_lander;
+	lander->n = 0;
 
 	setup_vects();
 	init_terrain();
