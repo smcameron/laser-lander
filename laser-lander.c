@@ -26,8 +26,15 @@ static int successful_landing = 0;
 static int joystick_fd = -1;
 static int camerax = 0;
 static int cameray = 0;
+static int openlase_color = 0;
 
 struct object;
+
+#define GROUNDCOLOR 0xff7f00
+#define NSPARKCOLORS 15
+#define FLAMECOLOR (NSPARKCOLORS / 2)
+int sparkcolor[NSPARKCOLORS];
+#define SPARKLIFE NSPARKCOLORS
 
 typedef void (*move_function)(struct object *o, float time);
 typedef void (*draw_function)(struct object *o);
@@ -83,7 +90,7 @@ void draw_generic(struct object *o)
 	y1 = o->y + o->v->p[0].y - cameray;  
 
 	olBegin(OL_LINESTRIP);
-	olVertex(x1,y1,C_WHITE);
+	olVertex(x1,y1,openlase_color);
 
 	for (j = 0; j < o->v->npoints - 1; j++) {
 		if (o->v->p[j+1].x == LINE_BREAK) { /* Break in the line segments. */
@@ -101,7 +108,7 @@ void draw_generic(struct object *o)
 		x2 = o->x + o->v->p[j+1].x - camerax; 
 		y2 = o->y + o->v->p[j+1].y - cameray;
 		if (x1 > 0 && x2 > 0)
-			olVertex(x2,y2,C_WHITE);
+			olVertex(x2,y2,openlase_color);
 		x1 = x2;
 		y1 = y2;
 	}
@@ -110,32 +117,37 @@ void draw_generic(struct object *o)
 
 void draw_lander(struct object *o)
 {
+	openlase_color = C_WHITE;
 	draw_generic(o);
 
 	/* draw flames */
 	if (requested_thrust > 0.0 && fuel > 0.0) {
 		olLine(o->x - 5 - camerax, o->y + 20 - cameray, 
-			o->x - camerax, o->y + 65 - cameray, C_WHITE);
+			o->x - camerax, o->y + 65 - cameray, sparkcolor[FLAMECOLOR]);
 		olLine(o->x + 5 - camerax, o->y + 20 - cameray, 
-			o->x - camerax, o->y + 65 - cameray, C_WHITE);
+			o->x - camerax, o->y + 65 - cameray, sparkcolor[FLAMECOLOR]);
 	}
 	if (requested_right > 0.0 && fuel > 0.0) {
 		olLine(o->x - 15 - camerax, o->y - cameray - 5, 
-			o->x - 40 - camerax, o->y- cameray, C_WHITE);
+			o->x - 40 - camerax, o->y- cameray, sparkcolor[FLAMECOLOR]);
 		olLine(o->x - 15 - camerax, o->y - cameray + 5, 
-			o->x - 40 - camerax, o->y- cameray, C_WHITE);
+			o->x - 40 - camerax, o->y- cameray, sparkcolor[FLAMECOLOR]);
 	}
 	if (requested_left > 0.0 && fuel > 0.0) {
 		olLine(o->x + 15 - camerax, o->y - cameray - 5, 
-			o->x + 40 - camerax, o->y- cameray, C_WHITE);
+			o->x + 40 - camerax, o->y- cameray, sparkcolor[FLAMECOLOR]);
 		olLine(o->x + 15 - camerax, o->y - cameray + 5, 
-			o->x + 40 - camerax, o->y- cameray, C_WHITE);
+			o->x + 40 - camerax, o->y- cameray, sparkcolor[FLAMECOLOR]);
 	}
 }
 
 static void draw_spark(struct object *o)
 {
-	olDot(o->x - camerax, o->y - cameray, 2, C_WHITE);
+	if (o->alive < 0)
+		return;
+	if (o->alive >= NSPARKCOLORS)
+		return;
+	olDot(o->x - camerax, o->y - cameray, 2, sparkcolor[o->alive]);
 }
 
 static inline void free_object(int i);
@@ -200,7 +212,7 @@ static void collision(void)
 	if (lander->vy < 15.0 && fabs(lander->vx) < 10.0) {
 		successful_landing = 1;
 	} else {
-		explode(lander->x, lander->y, 100, 100);
+		explode(lander->x, lander->y, 100, SPARKLIFE);
 		successful_landing = 0;
 	}
 	crash_screen = 1;
@@ -218,11 +230,11 @@ static void draw_terrain(void)
 		if ( first ) {
 			olBegin(OL_LINESTRIP);
 			olVertex(terrain[i].x - camerax,
-				 terrain[i].y - cameray,C_WHITE);
+				 terrain[i].y - cameray, GROUNDCOLOR);
 			first = 0;
 		}
 		olVertex( terrain[i + 1].x - camerax,
-			 terrain[i + 1].y - cameray, C_WHITE);
+			 terrain[i + 1].y - cameray, GROUNDCOLOR);
 
 		if (terrain[i].x < lander->x &&
 			terrain[i + 1].x > lander->x) {
@@ -366,10 +378,10 @@ static int abs_xy_draw_letter(struct my_vect_obj **font,
 		if (x1 > 0 && x2 > 0) {
 			if ( first ) {
 				olBegin(OL_LINESTRIP);
-				olVertex(x1,y1,C_WHITE);
+				olVertex(x1,y1,openlase_color);
 				first = 0;
 			}
-			olVertex(x2, y2, C_WHITE); 
+			olVertex(x2, y2, openlase_color);
 		}
 	}
 	olEnd();
@@ -430,17 +442,17 @@ static void move_lander(struct object *o, float elapsed_time)
 	if (requested_thrust > 0.0 && fuel > 0.0) {
 		o->vy -= gravity * 5.0;
 		exhaust(o->x - o->vx * elapsed_time, o->y - o->vy * elapsed_time + 65,
-			o->vx, o->vy + 400, 2, 10);
+			o->vx, o->vy + 400, 2, SPARKLIFE);
 	}
 	if (requested_left > 0.0 && fuel > 0.0) {
 		o->vx -= gravity * 3.0;
 		exhaust(o->x + 40 - o->vx * elapsed_time, o->y - o->vy * elapsed_time,
-			o->vx + 200, o->vy, 2, 10);
+			o->vx + 200, o->vy, 2, SPARKLIFE);
 	}
 	if (requested_right > 0.0 && fuel > 0.0) {
 		o->vx += gravity * 3.0;
 		exhaust(o->x - 40 - o->vx * elapsed_time, o->y - o->vy * elapsed_time,
-			o->vx - 200, o->vy, 2, 10);
+			o->vx - 200, o->vy, 2, SPARKLIFE);
 	}
 }
 
@@ -504,6 +516,7 @@ static void draw_title_screen(void)
 	static int y = 400;
 	static int vy = 5;
 
+	openlase_color = 0x1f1fff;
 	abs_xy_draw_string("LASER LANDER", BIG_FONT, 120, y);
 	y += vy;
 	if (y > 600)
@@ -600,11 +613,49 @@ static void move_camera(void)
 
 static void draw_crash_screen(void)
 {
-	if (crash_screen) {
-		if (successful_landing)
-			abs_xy_draw_string("SUCCESS!", BIG_FONT, 120, 200);
-		else
-			abs_xy_draw_string("CRASH!", BIG_FONT, 120, 200);
+	if (!crash_screen)
+		return;
+
+	if (successful_landing) {
+		openlase_color = 0x1fff1f;
+		abs_xy_draw_string("SUCCESS!", BIG_FONT, 120, 200);
+	} else {
+		openlase_color = 0xff1f1f;
+		abs_xy_draw_string("CRASH!", BIG_FONT, 120, 200);
+	}
+}
+
+static void setup_spark_colors(void)
+{
+
+	/* Set up an array of colors that fade nicely from bright
+	 * yellow to orange to red.
+	 */
+
+	int i, r, g, b, dr, dg, db;
+
+	r = 32766 * 2;
+	g = 32766 * 2;
+	b = 32766 * 1.5;
+
+	dr = 0;
+	dg = (-(2500) / NSPARKCOLORS);
+	db = 3 * dg;
+
+	for (i = NSPARKCOLORS - 1; i >= 0; i--) {
+		sparkcolor[i] = ((r >> 8) << 16) |
+				((g >> 8) << 8) |
+				((b >> 8));
+		r += dr;
+		g += dg;
+		b += db;
+
+		if (r < 0) r = 0;
+		if (g < 0) g = 0;
+		if (b < 0) b = 0;
+
+		dg *= 1.27;
+		db *= 1.27;
 	}
 }
 
@@ -628,6 +679,7 @@ int main(int argc, char *argv[])
 	lander->move = move_lander;
 	lander->n = 0;
 
+	setup_spark_colors();
 	setup_vects();
 	init_terrain();
 	joystick_fd = open_joystick(JOYSTICK_DEVICE, NULL);
