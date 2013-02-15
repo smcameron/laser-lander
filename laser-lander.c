@@ -477,6 +477,19 @@ static void move_generic(struct object *o, float elapsed_time)
 	o->vy += gravity;
 }
 
+static void remove_landing_pads(void)
+{
+	int i;
+
+	for (i = 0; i < MAXOBJS; i++) {
+		if (o[i].alive && o[i].draw == draw_landing_pad) {
+			o[i].alive = 0;
+			o[i].draw = NULL;
+			free_object(i);
+		}
+	}
+}
+
 static void move_lander(struct object *o, float elapsed_time)
 {
 	static int crash_timer = 0;
@@ -486,8 +499,10 @@ static void move_lander(struct object *o, float elapsed_time)
 		o->vy = 0;
 		crash_timer--;
 		if (crash_timer == 0) {
-			if (!successful_landing)
+			if (!successful_landing) {
+				remove_landing_pads();
 				init_terrain();
+			}
 			crash_screen = 0;
 			o->x = SCREEN_WIDTH / 2 + 0.1;
 			o->y = terrain[NTERRAINPTS / 32].y - 300;
