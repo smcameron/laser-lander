@@ -28,6 +28,7 @@ static int joystick_fd = -1;
 static int camerax = 0;
 static int cameray = 0;
 static int openlase_color = 0;
+static int attract_mode_active = 1;
 
 struct object;
 
@@ -525,13 +526,20 @@ static void move_lander(struct object *o, float elapsed_time)
 			if (!successful_landing) {
 				remove_landing_pads();
 				init_terrain();
+				o->x = SCREEN_WIDTH / 2 + 0.1;
+				o->y = terrain[NTERRAINPTS / 32].y - 300;
+				o->vx = 150;
+				o->vy = 0;
+				o->v = &lander_vect;
+				attract_mode_active = 1;
+			} else {
+				o->vx = 0;
+				o->vy = -100;
+				exhaust(o->x - o->vx * elapsed_time,
+					o->y - o->vy * elapsed_time + 65,
+					o->vx, o->vy + 400, 20, SPARKLIFE);
 			}
 			crash_screen = 0;
-			o->x = SCREEN_WIDTH / 2 + 0.1;
-			o->y = terrain[NTERRAINPTS / 32].y - 300;
-			o->vx = 150;
-			o->vy = 0;
-			o->v = &lander_vect;
 		}
 	} else {
 		crash_timer = 100;
@@ -623,8 +631,6 @@ static void draw_title_screen(void)
 		vy = 5;
 	rainbow_abs_xy_draw_string("(c) Stephen M. Cameron 2013", SMALL_FONT, 250, 700); 
 }
-
-static int attract_mode_active = 1;
 
 static void attract_mode(void)
 {
