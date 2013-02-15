@@ -14,6 +14,7 @@
 #define SCREEN_HEIGHT (1000.0)
 #define XSCALE (1.0 / (SCREEN_WIDTH / 2.0))
 #define YSCALE (-1.0 / (SCREEN_HEIGHT / 2.0))
+#define TERRAIN_WIDTH (SCREEN_WIDTH * 16)
 static float gravity = 0.3;
 static float requested_thrust = 0.0;
 static float requested_left = 0.0;
@@ -299,7 +300,7 @@ static void generate_terrain(int first, int last)
 	midx = terrain[first].x + dx / 2;
 	midy = terrain[first].y + dy / 2;
 	dist = (int) sqrt(dx * dx + dy * dy);
-	midy += (short) (((double) rand() / (double) RAND_MAX) * dist * 0.2);
+	midy += (short) ((((double) rand() / (double) RAND_MAX) - 0.5) * dist * 0.4);
 	terrain[midpoint].x = midx;
 	terrain[midpoint].y = midy;
 	generate_terrain(first, midpoint);
@@ -335,7 +336,7 @@ static init_terrain(void)
 
 	terrain[first].x = 0;
 	terrain[first].y = 0;
-	terrain[last].x = (short) (16 * SCREEN_WIDTH);
+	terrain[last].x = (short) TERRAIN_WIDTH;
 	terrain[last].y = 0;
 	generate_terrain(first, last);
 	add_landing_pads(3);
@@ -467,6 +468,10 @@ static void draw_objs(void)
 
 static void move_generic(struct object *o, float elapsed_time)
 {
+	if (o->x + o->vx * elapsed_time < 0)
+		o->vx = -o->vx;
+	if (o->x + o->vx * elapsed_time > TERRAIN_WIDTH)
+		o->vx = -o->vx;
 	o->x += o->vx * elapsed_time;
 	o->y += o->vy * elapsed_time;
 	o->vy += gravity;
@@ -481,9 +486,11 @@ static void move_lander(struct object *o, float elapsed_time)
 		o->vy = 0;
 		crash_timer--;
 		if (crash_timer == 0) {
+			if (!successful_landing)
+				init_terrain();
 			crash_screen = 0;
-			o->x = SCREEN_WIDTH/2+0.1;
-			o->y = 0;
+			o->x = SCREEN_WIDTH / 2 + 0.1;
+			o->y = terrain[NTERRAINPTS / 32].y - 300;
 			o->vx = 150;
 			o->vy = 0;
 			o->v = &lander_vect;
@@ -723,7 +730,7 @@ int main(int argc, char *argv[])
 	srand(tv.tv_usec);
 
 	free_obj_bitmap[0] = 0x01;
-	lander->x = SCREEN_WIDTH/2+0.1;
+	lander->x = SCREEN_WIDTH / 2 + 0.1;
 	lander->y = 0;
 	lander->vx = 150;
 	lander->vy = 0;
@@ -736,6 +743,7 @@ int main(int argc, char *argv[])
 	setup_spark_colors();
 	setup_vects();
 	init_terrain();
+	lander->y = terrain[NTERRAINPTS / 32].y - 300;
 	joystick_fd = open_joystick(JOYSTICK_DEVICE, NULL);
 	if (joystick_fd < 0)
 		printf("No joystick...");
