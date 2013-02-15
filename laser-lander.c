@@ -137,9 +137,12 @@ void draw_generic(struct object *o)
 
 void draw_landing_pad(struct object *o)
 {
+	static int rbcolor = 0;
+
 	olLine(o->x - 20 - camerax, o->y - cameray,
 			o->x + 20 - camerax, o->y - cameray,
-			C_GREEN);
+			rainbow_color[rbcolor]);
+	rbcolor = (rbcolor + 1) % NRAINBOWCOLORS;
 }
 
 void no_move(__attribute__ ((unused)) struct object *o,
@@ -150,7 +153,7 @@ void no_move(__attribute__ ((unused)) struct object *o,
 
 void draw_lander(struct object *o)
 {
-	openlase_color = C_WHITE;
+	openlase_color = C_GREEN;
 	draw_generic(o);
 
 	/* draw flames */
