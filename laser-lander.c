@@ -36,6 +36,9 @@ struct object;
 #define FLAMECOLOR (NSPARKCOLORS / 2)
 int sparkcolor[NSPARKCOLORS];
 #define SPARKLIFE NSPARKCOLORS
+#define NRAINBOWSTEPS 16
+#define NRAINBOWCOLORS (NRAINBOWSTEPS * 3)
+int rainbow_color[NRAINBOWCOLORS];
 
 typedef void (*move_function)(struct object *o, float time);
 typedef void (*draw_function)(struct object *o);
@@ -457,6 +460,26 @@ static void abs_xy_draw_string(char *s, int font, int x, int y)
 	}
 }
 
+static void rainbow_abs_xy_draw_string(char *s, int font, int x, int y) 
+{
+
+	int i;	
+	int dx, deltax = 0;
+	int color;
+	static int rbtimer = 0; 
+		
+	for (i = 0; s[i] ; i++) {
+		color = ((((x + deltax*i) * NRAINBOWCOLORS) / ((int)SCREEN_WIDTH*2) + 
+			((y * NRAINBOWCOLORS)/ ((int)SCREEN_HEIGHT*2)) + rbtimer) %
+				NRAINBOWCOLORS);
+		openlase_color = rainbow_color[color];
+		dx = (font_scale[font]) +
+			abs_xy_draw_letter(gamefont[font], s[i], x + deltax, y);  
+		deltax += dx;
+	}
+	rbtimer++;
+}
+
 static void draw_objs(void)
 {
 	int i;
@@ -592,7 +615,7 @@ static void draw_title_screen(void)
 	static int vy = 5;
 
 	openlase_color = 0x1f1fff;
-	abs_xy_draw_string("LASER LANDER", BIG_FONT, 120, y);
+	rainbow_abs_xy_draw_string("LASER LANDER", BIG_FONT, 120, y);
 	y += vy;
 	if (y > 600)
 		vy = -5;
@@ -735,6 +758,66 @@ static void setup_spark_colors(void)
 	}
 }
 
+static void setup_rainbow_colors(void)
+{
+
+	int i, r, g, b, dr, dg, db, c;
+
+	r = 32766*2;
+	g = 0;
+	b = 0;
+
+	dr = -r / NRAINBOWSTEPS;
+	dg = r / NRAINBOWSTEPS;
+	db = 0;
+
+	c = 0;
+
+	for (i = 0; i < NRAINBOWSTEPS; i++) {
+		rainbow_color[c] = ((r >> 8) << 16) |
+				((g >> 8) << 8) |
+				(b >> 8);
+
+		r += dr;
+		g += dg;
+		b += db;
+
+		c++;
+	}
+
+	dg = (-32766 * 2) / NRAINBOWSTEPS;
+	db = -dg;
+	dr = 0;
+
+	for (i = 0; i < NRAINBOWSTEPS; i++) {
+		rainbow_color[c] = ((r >> 8) << 16) |
+					((g >> 8) << 8) |
+					(b >> 8);
+
+		r += dr;
+		g += dg;
+		b += db;
+
+		c++;
+	}
+
+	db = (-32766 * 2) / NRAINBOWSTEPS;
+	dr = -db;
+	dg = 0;
+
+	for (i = 0;i < NRAINBOWSTEPS; i++) {
+		rainbow_color[c] = ((r >> 8) << 16) |
+					((g >> 8) << 8) |
+					(b >> 8); 
+		r += dr;
+		g += dg;
+		b += db;
+
+		c++;
+	}
+}
+
+
 int main(int argc, char *argv[])
 {
 	float elapsed_time = 0.0;
@@ -756,6 +839,7 @@ int main(int argc, char *argv[])
 	lander->n = 0;
 
 	setup_spark_colors();
+	setup_rainbow_colors();
 	setup_vects();
 	init_terrain();
 	lander->y = terrain[NTERRAINPTS / 32].y - 300;
