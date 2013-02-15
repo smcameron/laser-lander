@@ -36,7 +36,7 @@ struct object;
 #define FLAMECOLOR (NSPARKCOLORS / 2)
 int sparkcolor[NSPARKCOLORS];
 #define SPARKLIFE NSPARKCOLORS
-#define NRAINBOWSTEPS 16
+#define NRAINBOWSTEPS (256 / 3) 
 #define NRAINBOWCOLORS (NRAINBOWSTEPS * 3)
 int rainbow_color[NRAINBOWCOLORS];
 
@@ -469,15 +469,15 @@ static void rainbow_abs_xy_draw_string(char *s, int font, int x, int y)
 	static int rbtimer = 0; 
 		
 	for (i = 0; s[i] ; i++) {
-		color = ((((x + deltax*i) * NRAINBOWCOLORS) / ((int)SCREEN_WIDTH*2) + 
-			((y * NRAINBOWCOLORS)/ ((int)SCREEN_HEIGHT*2)) + rbtimer) %
+		color = ((((x + deltax) * NRAINBOWCOLORS) / ((int) SCREEN_WIDTH * 2)
+				+ rbtimer) %
 				NRAINBOWCOLORS);
 		openlase_color = rainbow_color[color];
 		dx = (font_scale[font]) +
 			abs_xy_draw_letter(gamefont[font], s[i], x + deltax, y);  
 		deltax += dx;
 	}
-	rbtimer++;
+	rbtimer += 2;
 }
 
 static void draw_objs(void)
@@ -621,7 +621,7 @@ static void draw_title_screen(void)
 		vy = -5;
 	if (y < 300)
 		vy = 5;
-	abs_xy_draw_string("(c) Stephen M. Cameron 2013", SMALL_FONT, 250, 700); 
+	rainbow_abs_xy_draw_string("(c) Stephen M. Cameron 2013", SMALL_FONT, 250, 700); 
 }
 
 static int attract_mode_active = 1;
