@@ -237,6 +237,38 @@ static void explode(float x, float y, int amount, int life)
 	}
 }
 
+static char *evaluate_landing(void)
+{
+	int i;
+	int first = 1;
+	float min_dist = 1e06;
+	float dist;
+
+	for (i = 0; i < MAXOBJS; i++) {
+		if (o[i].alive && o[i].draw == draw_landing_pad) {
+			float dx, dy;
+			dx = o[i].x - lander->x;
+			dy = o[i].y - lander->y;
+			dist = (float) sqrt(dx * dx + dy * dy);
+			if (first || dist < min_dist) {
+				first = 0;
+				min_dist = dist;
+			}
+		}
+	}
+	if (first)
+		return "Huh?";
+	if (min_dist < 28.0)
+		return "EXCELLENT";
+	if (min_dist < 40.0)
+		return "NOT BAD";
+	if (min_dist < 60.0)
+		return "ROOKIE";
+	if (min_dist < 100.0)
+		return "POOR";
+	return "TERRIBLE";
+}
+
 static void collision(void)
 {
 	if (crash_screen)
@@ -723,7 +755,7 @@ static void draw_crash_screen(void)
 
 	if (successful_landing) {
 		openlase_color = 0x1fff1f;
-		abs_xy_draw_string("SUCCESS!", BIG_FONT, 120, 200);
+		abs_xy_draw_string(evaluate_landing(), BIG_FONT, 120, 200);
 	} else {
 		openlase_color = 0xff1f1f;
 		abs_xy_draw_string("CRASH!", BIG_FONT, 120, 200);
