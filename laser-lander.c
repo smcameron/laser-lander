@@ -62,6 +62,21 @@ struct my_point_t lander_points[] = {
 };
 struct my_vect_obj lander_vect;
 
+struct my_point_t wreckage_points[] = {
+	{ 0, 0 },
+	{ 10, 4},
+	{ 12, 7},
+	{-13, 8},
+	{-10, 9},
+	{ LINE_BREAK, LINE_BREAK },
+	{ -5, 10},
+	{ -15, 25 },
+	{ LINE_BREAK, LINE_BREAK },
+	{ 5, 10},
+	{ 15, 25 },
+};
+struct my_vect_obj wreckage_vect;
+
 static struct object {
 	float x, y, angle;
 	float vx, vy;
@@ -213,6 +228,7 @@ static void collision(void)
 		successful_landing = 1;
 	} else {
 		explode(lander->x, lander->y, 100, SPARKLIFE);
+		lander->v = &wreckage_vect;
 		successful_landing = 0;
 	}
 	crash_screen = 1;
@@ -434,6 +450,7 @@ static void move_lander(struct object *o, float elapsed_time)
 			o->y = 0;
 			o->vx = 150;
 			o->vy = 0;
+			o->v = &lander_vect;
 		}
 	} else {
 		crash_timer = 100;
@@ -578,6 +595,7 @@ static void deal_with_joystick(void)
 static void setup_vects(void)
 {
 	setup_vect(lander_vect, lander_points);
+	setup_vect(wreckage_vect, wreckage_points);
 }
 
 static void move_camera(void)
