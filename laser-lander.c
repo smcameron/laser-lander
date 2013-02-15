@@ -130,6 +130,19 @@ void draw_generic(struct object *o)
 	olEnd();
 }
 
+void draw_landing_pad(struct object *o)
+{
+	olLine(o->x - 20 - camerax, o->y - cameray,
+			o->x + 20 - camerax, o->y - cameray,
+			C_GREEN);
+}
+
+void no_move(__attribute__ ((unused)) struct object *o,
+		__attribute__ ((unused)) float elapsed_time)
+{
+	return;
+}
+
 void draw_lander(struct object *o)
 {
 	openlase_color = C_WHITE;
@@ -293,6 +306,28 @@ static void generate_terrain(int first, int last)
 	generate_terrain(midpoint, last);
 }
 
+int find_free_obj(void);
+static void add_landing_pads(int n)
+{
+	int i, x, j;
+	struct object *k;
+
+	x = NTERRAINPTS / (n + 1);
+	for (i = 0; i < n; i++) {
+		/* make a level spot */
+		terrain[x].y = terrain[x + 1].y;
+		j = find_free_obj();
+		k = &o[j];
+		k->x = (terrain[x + 1].x - terrain[x].x) / 2;
+		k->x += terrain[x].x;
+		k->y = terrain[x].y - 3;
+		k->draw = draw_landing_pad;
+		k->move = no_move;
+		k->alive = 1;
+		x += NTERRAINPTS / (n + 1);
+	}
+}
+
 static init_terrain(void)
 {
 	int first = 0;
@@ -303,9 +338,10 @@ static init_terrain(void)
 	terrain[last].x = (short) (16 * SCREEN_WIDTH);
 	terrain[last].y = 0;
 	generate_terrain(first, last);
+	add_landing_pads(3);
 }
 
-int find_free_obj()
+int find_free_obj(void)
 {
 	int i, j, answer;
 	unsigned int block;
