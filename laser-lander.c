@@ -98,6 +98,28 @@ static struct object *lander = &o[0];
 #define NTERRAINPTS 100
 struct my_point_t terrain[NTERRAINPTS] = { 0 };
 
+#define CHECK_ALTITUDE 0
+#define CHECK_HVELOCITY 1
+#define CHECK_VVELOCITY 2
+#define EXCELLENT_LANDING 3
+#define NOT_BAD 4
+#define ROOKIE 5
+#define STAR_SPANGLED_BANNER 6
+#define TERRIBLE 7
+#define NUMSOUNDS 8
+
+void read_audio_data()
+{
+	wwviaudio_read_ogg_clip(CHECK_ALTITUDE, "check-altitude.ogg");
+	wwviaudio_read_ogg_clip(CHECK_HVELOCITY, "check-hvelocity.ogg");
+	wwviaudio_read_ogg_clip(CHECK_VVELOCITY, "check-vvelocity.ogg");
+	wwviaudio_read_ogg_clip(EXCELLENT_LANDING, "excellent-landing.ogg");
+	wwviaudio_read_ogg_clip(NOT_BAD, "not-bad.ogg");
+	wwviaudio_read_ogg_clip(ROOKIE, "rookie-landing.ogg");
+	wwviaudio_read_ogg_clip(STAR_SPANGLED_BANNER, "star-spangled-banner.ogg");
+	wwviaudio_read_ogg_clip(TERRIBLE, "terrible.ogg");
+}
+
 void draw_generic(struct object *o)
 {
 	int j;
@@ -863,7 +885,13 @@ int main(int argc, char *argv[])
 {
 	float elapsed_time = 0.0;
 	struct timeval tv;
+	int audio_failed = 0;
 
+	audio_failed = wwviaudio_initialize_portaudio(10, NUMSOUNDS);
+	if (audio_failed)
+		fprintf(stderr, "Failed to initialized portaudio, sound won't work.\n");
+	else
+		read_audio_data();
 	memset(o, 0, sizeof(o));
 	gettimeofday(&tv, NULL);
 	srand(tv.tv_usec);
@@ -906,6 +934,10 @@ int main(int argc, char *argv[])
 	olShutdown();
 	if (joystick_fd >= 0)
 		close_joystick();
+	if (!audio_failed) {
+		wwviaudio_cancel_all_sounds();
+		wwviaduio_stop_portaudio();
+	}
 	return 0;
 }
 
