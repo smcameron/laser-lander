@@ -29,6 +29,7 @@ static int camerax = 0;
 static int cameray = 0;
 static int openlase_color = 0;
 static int attract_mode_active = 1;
+static int landing_evaluated = 0;
 
 struct object;
 
@@ -108,6 +109,7 @@ struct my_point_t terrain[NTERRAINPTS] = { 0 };
 #define TERRIBLE 7
 #define GO_FOR_LANDING 8
 #define NUMSOUNDS 9
+struct timeval last_sound_time;
 
 void read_audio_data()
 {
@@ -120,6 +122,19 @@ void read_audio_data()
 	wwviaudio_read_ogg_clip(STAR_SPANGLED_BANNER, "star-spangled-banner.ogg");
 	wwviaudio_read_ogg_clip(TERRIBLE, "terrible.ogg");
 	wwviaudio_read_ogg_clip(GO_FOR_LANDING, "go-for-landing.ogg");
+}
+
+void add_sound(int sound)
+{
+	struct timeval t;
+
+	gettimeofday(&t, NULL);
+#define SOUND_TIME_LIMIT 3 /* seconds */
+	if ((t.tv_sec - last_sound_time.tv_sec) < SOUND_TIME_LIMIT)
+		return;
+	last_sound_time = t;
+	wwviaudio_add_sound(sound);
+	printf("playing %d\n", sound);
 }
 
 void draw_generic(struct object *o)
@@ -283,16 +298,43 @@ static char *evaluate_landing(void)
 			}
 		}
 	}
-	if (first)
+	if (first) {
 		return "Huh?";
-	if (min_dist < 28.0)
+	}
+	if (min_dist < 28.0) {
+		if (!landing_evaluated) {
+			wwviaudio_add_sound(STAR_SPANGLED_BANNER);
+			printf("playing star spangled banner\n");
+			add_sound(EXCELLENT_LANDING);
+			landing_evaluated = 1;
+		}
 		return "EXCELLENT";
-	if (min_dist < 40.0)
+	}
+	if (min_dist < 40.0) {
+		if (!landing_evaluated) {
+			add_sound(NOT_BAD);
+			landing_evaluated = 1;
+		}
 		return "NOT BAD";
-	if (min_dist < 60.0)
+	}
+	if (min_dist < 60.0) {
+		if (!landing_evaluated) {
+			add_sound(ROOKIE);
+			landing_evaluated = 1;
+		}
 		return "ROOKIE";
-	if (min_dist < 100.0)
+	}
+	if (min_dist < 100.0) {
+		if (!landing_evaluated) {
+			add_sound(ROOKIE);
+			landing_evaluated = 1;
+		}
 		return "POOR";
+	}
+	if (!landing_evaluated) {
+		add_sound(TERRIBLE);
+		landing_evaluated = 1;
+	}
 	return "TERRIBLE";
 }
 
@@ -582,7 +624,6 @@ static void move_lander(struct object *o, float elapsed_time)
 		o->vy = 0;
 		crash_timer--;
 		if (crash_timer == 0) {
-			wwviaudio_add_sound(GO_FOR_LANDING);
 			if (!successful_landing) {
 				remove_landing_pads();
 				init_terrain();
@@ -592,6 +633,8 @@ static void move_lander(struct object *o, float elapsed_time)
 				o->vy = 0;
 				o->v = &lander_vect;
 				attract_mode_active = 1;
+				wwviaudio_add_sound(GO_FOR_LANDING);
+				printf("playing GO FOR LANDING\n");
 			} else {
 				o->vx = 0;
 				o->vy = -100;
@@ -600,6 +643,7 @@ static void move_lander(struct object *o, float elapsed_time)
 					o->vx, o->vy + 400, 20, SPARKLIFE);
 			}
 			crash_screen = 0;
+			landing_evaluated = 0;
 		}
 	} else {
 		crash_timer = 100;
@@ -898,6 +942,7 @@ int main(int argc, char *argv[])
 	memset(o, 0, sizeof(o));
 	gettimeofday(&tv, NULL);
 	srand(tv.tv_usec);
+	last_sound_time = tv;
 
 	free_obj_bitmap[0] = 0x01;
 	lander->x = SCREEN_WIDTH / 2 + 0.1;
