@@ -108,7 +108,8 @@ struct my_point_t terrain[NTERRAINPTS] = { 0 };
 #define STAR_SPANGLED_BANNER 6
 #define TERRIBLE 7
 #define GO_FOR_LANDING 8
-#define NUMSOUNDS 9
+#define THRUSTER 9
+#define NUMSOUNDS 10 
 struct timeval last_sound_time;
 
 void read_audio_data()
@@ -122,6 +123,7 @@ void read_audio_data()
 	wwviaudio_read_ogg_clip(STAR_SPANGLED_BANNER, "star-spangled-banner.ogg");
 	wwviaudio_read_ogg_clip(TERRIBLE, "terrible.ogg");
 	wwviaudio_read_ogg_clip(GO_FOR_LANDING, "go-for-landing.ogg");
+	wwviaudio_read_ogg_clip(THRUSTER, "thruster.ogg");
 }
 
 void add_sound(int sound)
@@ -135,6 +137,19 @@ void add_sound(int sound)
 	last_sound_time = t;
 	wwviaudio_add_sound(sound);
 	printf("playing %d\n", sound);
+}
+
+void play_thruster_sound(void)
+{
+	static struct timeval t = {0};
+	struct timeval now;
+
+	gettimeofday(&now, NULL);
+	if (now.tv_sec != t.tv_sec || (now.tv_usec - t.tv_usec > 300000)) {
+		t = now;
+		wwviaudio_add_sound(THRUSTER);
+		printf("playing THRUSTER\n");
+	}
 }
 
 void draw_generic(struct object *o)
@@ -657,16 +672,19 @@ static void move_lander(struct object *o, float elapsed_time)
 		o->vy -= gravity * 5.0;
 		exhaust(o->x - o->vx * elapsed_time, o->y - o->vy * elapsed_time + 65,
 			o->vx, o->vy + 400, 2, SPARKLIFE);
+		play_thruster_sound();
 	}
 	if (requested_left > 0.0 && fuel > 0.0) {
 		o->vx -= gravity * 3.0;
 		exhaust(o->x + 40 - o->vx * elapsed_time, o->y - o->vy * elapsed_time,
 			o->vx + 200, o->vy, 2, SPARKLIFE);
+		play_thruster_sound();
 	}
 	if (requested_right > 0.0 && fuel > 0.0) {
 		o->vx += gravity * 3.0;
 		exhaust(o->x - 40 - o->vx * elapsed_time, o->y - o->vy * elapsed_time,
 			o->vx - 200, o->vy, 2, SPARKLIFE);
+		play_thruster_sound();
 	}
 }
 
