@@ -129,7 +129,7 @@ void add_sound(int sound)
 	struct timeval t;
 
 	gettimeofday(&t, NULL);
-#define SOUND_TIME_LIMIT 3 /* seconds */
+#define SOUND_TIME_LIMIT 5 /* seconds */
 	if ((t.tv_sec - last_sound_time.tv_sec) < SOUND_TIME_LIMIT)
 		return;
 	last_sound_time = t;
@@ -649,6 +649,10 @@ static void move_lander(struct object *o, float elapsed_time)
 		crash_timer = 100;
 	}
 	move_generic(o, elapsed_time);
+	if (o->vy < -130 || o->vy > 60)
+		add_sound(CHECK_VVELOCITY);
+	if (o->vx < -155 || o->vx > 155)
+		add_sound(CHECK_HVELOCITY);
 	if (requested_thrust > 0.0 && fuel > 0.0) {
 		o->vy -= gravity * 5.0;
 		exhaust(o->x - o->vx * elapsed_time, o->y - o->vy * elapsed_time + 65,
