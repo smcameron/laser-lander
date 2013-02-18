@@ -106,7 +106,8 @@ struct my_point_t terrain[NTERRAINPTS] = { 0 };
 #define ROOKIE 5
 #define STAR_SPANGLED_BANNER 6
 #define TERRIBLE 7
-#define NUMSOUNDS 8
+#define GO_FOR_LANDING 8
+#define NUMSOUNDS 9
 
 void read_audio_data()
 {
@@ -118,6 +119,7 @@ void read_audio_data()
 	wwviaudio_read_ogg_clip(ROOKIE, "rookie-landing.ogg");
 	wwviaudio_read_ogg_clip(STAR_SPANGLED_BANNER, "star-spangled-banner.ogg");
 	wwviaudio_read_ogg_clip(TERRIBLE, "terrible.ogg");
+	wwviaudio_read_ogg_clip(GO_FOR_LANDING, "go-for-landing.ogg");
 }
 
 void draw_generic(struct object *o)
@@ -580,6 +582,7 @@ static void move_lander(struct object *o, float elapsed_time)
 		o->vy = 0;
 		crash_timer--;
 		if (crash_timer == 0) {
+			wwviaudio_add_sound(GO_FOR_LANDING);
 			if (!successful_landing) {
 				remove_landing_pads();
 				init_terrain();
