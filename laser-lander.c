@@ -138,7 +138,6 @@ void add_sound(int sound)
 		return;
 	last_sound_time = t;
 	wwviaudio_add_sound(sound);
-	printf("playing %d\n", sound);
 }
 
 void play_thruster_sound(void)
@@ -150,7 +149,6 @@ void play_thruster_sound(void)
 	if (now.tv_sec != t.tv_sec || (now.tv_usec - t.tv_usec > 300000)) {
 		t = now;
 		wwviaudio_add_sound(THRUSTER);
-		printf("playing THRUSTER\n");
 	}
 }
 
@@ -321,7 +319,6 @@ static char *evaluate_landing(void)
 	if (min_dist < 28.0) {
 		if (!landing_evaluated) {
 			wwviaudio_add_sound(STAR_SPANGLED_BANNER);
-			printf("playing star spangled banner\n");
 			add_sound(EXCELLENT_LANDING);
 			landing_evaluated = 1;
 		}
@@ -367,7 +364,6 @@ static void collision(void)
 		lander->v = &wreckage_vect;
 		successful_landing = 0;
 		wwviaudio_add_sound(EXPLOSION);
-		printf("playing explosion\n");
 	}
 	crash_screen = 1;
 }
@@ -653,7 +649,6 @@ static void move_lander(struct object *o, float elapsed_time)
 				o->v = &lander_vect;
 				attract_mode_active = 1;
 				wwviaudio_add_sound(GO_FOR_LANDING);
-				printf("playing GO FOR LANDING\n");
 			} else {
 				o->vx = 0;
 				o->vy = -100;
