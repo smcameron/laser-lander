@@ -109,7 +109,8 @@ struct my_point_t terrain[NTERRAINPTS] = { 0 };
 #define TERRIBLE 7
 #define GO_FOR_LANDING 8
 #define THRUSTER 9
-#define NUMSOUNDS 10 
+#define EXPLOSION 10 
+#define NUMSOUNDS 11
 struct timeval last_sound_time;
 
 void read_audio_data()
@@ -124,6 +125,7 @@ void read_audio_data()
 	wwviaudio_read_ogg_clip(TERRIBLE, "terrible.ogg");
 	wwviaudio_read_ogg_clip(GO_FOR_LANDING, "go-for-landing.ogg");
 	wwviaudio_read_ogg_clip(THRUSTER, "thruster.ogg");
+	wwviaudio_read_ogg_clip(EXPLOSION, "crash-explosion.ogg");
 }
 
 void add_sound(int sound)
@@ -364,6 +366,8 @@ static void collision(void)
 		explode(lander->x, lander->y, 100, SPARKLIFE);
 		lander->v = &wreckage_vect;
 		successful_landing = 0;
+		wwviaudio_add_sound(EXPLOSION);
+		printf("playing explosion\n");
 	}
 	crash_screen = 1;
 }
